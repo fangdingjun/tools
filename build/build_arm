@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export GOOS=linux
+export GOARCH=arm
+export CC=arm-linux-gnueabihf-gcc
+export CXX=arm-linux-gnueabihf-g++
+export CGO_ENABLED=1
+go build "$@"
+exit $?

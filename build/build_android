@@ -1,0 +1,13 @@
+#!/bin/bash
+
+NDK_VERSION=r12b
+
+export GOMOBILE="$GOPATH/pkg/gomobile"
+export GOOS=android
+export GOARCH=arm 
+export CC=$GOMOBILE/android-ndk-$NDK_VERSION/arm/bin/arm-linux-androideabi-clang
+export CXX=$GOMOBILE/android-ndk-$NDK_VERSION/arm/bin/arm-linux-androideabi-clang++
+export CGO_ENABLED=1
+export GOARM=7
+go build -p=8 -pkgdir=$GOMOBILE/pkg_android_arm -tags="" -ldflags="-extldflags=-pie" "$@"
+exit $?

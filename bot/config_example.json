@@ -1,0 +1,8 @@
+{
+  "token": "123456789:bcaEt1Nctpyd7x25wMIEMQQ488T61Cev76y",
+  "trust_users": ["youUserName"],
+  "poll_timeout":120,
+  "poll_limit":80,
+  "file_save_dir":"/tmp/aa",
+  "api_debug":true
+}
