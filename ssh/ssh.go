@@ -112,18 +112,19 @@ func main() {
 
 	auth := []ssh.AuthMethod{}
 
-	agentEnv := os.Getenv("SSH_AUTH_SOCK")
-	if agentEnv != "" {
-		if sock, err := net.Dial("unix", agentEnv); err == nil {
-			ag := agent.NewClient(sock)
-			if signers, err := ag.Signers(); err == nil {
-				//log.Printf("add agent...")
-				auth = append(auth, ssh.PublicKeys(signers...))
+	// read ssh agent and default auth key
+	if pass == "" && key == "" {
+		agentEnv := os.Getenv("SSH_AUTH_SOCK")
+		if agentEnv != "" {
+			if sock, err := net.Dial("unix", agentEnv); err == nil {
+				ag := agent.NewClient(sock)
+				if signers, err := ag.Signers(); err == nil {
+					//log.Printf("add agent...")
+					auth = append(auth, ssh.PublicKeys(signers...))
+				}
 			}
 		}
-	}
 
-	if key == "" {
 		home := os.Getenv("HOME")
 		for _, f := range []string{
 			".ssh/id_rsa",
