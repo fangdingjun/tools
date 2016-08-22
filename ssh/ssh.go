@@ -96,9 +96,9 @@ func main() {
 	var localForward, remoteForward, dynamicForward string
 	var notRunCmd bool
 
-	flag.StringVar(&user, "l", "", "ssh username")
+	flag.StringVar(&user, "l", os.Getenv("USER"), "ssh username")
 	flag.StringVar(&pass, "pw", "", "ssh password")
-	flag.StringVar(&port, "p", "0", "remote port")
+	flag.StringVar(&port, "p", "22", "remote port")
 	flag.StringVar(&key, "i", "", "private key file")
 	flag.StringVar(&localForward, "L", "", "forward local port to remote, format [local_host:]local_port:remote_host:remote_port")
 	flag.StringVar(&remoteForward, "R", "", "forward remote port to local, format [remote_host:]remote_port:local_host:local_port")
@@ -106,23 +106,12 @@ func main() {
 	flag.StringVar(&dynamicForward, "D", "", "enable dynamic forward, format [local_host:]local_port")
 	flag.Parse()
 
-	if user == "" {
-		user = os.Getenv("USER")
-	}
-
 	auth := []ssh.AuthMethod{}
 
 	// read ssh agent and default auth key
 	if pass == "" && key == "" {
-		agentEnv := os.Getenv("SSH_AUTH_SOCK")
-		if agentEnv != "" {
-			if sock, err := net.Dial("unix", agentEnv); err == nil {
-				ag := agent.NewClient(sock)
-				if signers, err := ag.Signers(); err == nil {
-					//log.Printf("add agent...")
-					auth = append(auth, ssh.PublicKeys(signers...))
-				}
-			}
+		if aconn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+			auth = append(auth, ssh.PublicKeysCallback(agent.NewClient(aconn).Signers))
 		}
 
 		home := os.Getenv("HOME")
@@ -134,12 +123,10 @@ func main() {
 			".ssh/id_ed25519",
 		} {
 			k1 := filepath.Join(home, f)
-			if _, err := os.Stat(k1); err == nil {
-				if pemBytes, err := ioutil.ReadFile(k1); err == nil {
-					if priKey, err := ssh.ParsePrivateKey(pemBytes); err == nil {
-						//log.Printf("add pri...")
-						auth = append(auth, ssh.PublicKeys(priKey))
-					}
+			if pemBytes, err := ioutil.ReadFile(k1); err == nil {
+				if priKey, err := ssh.ParsePrivateKey(pemBytes); err == nil {
+					//log.Printf("add pri...")
+					auth = append(auth, ssh.PublicKeys(priKey))
 				}
 			}
 		}
@@ -187,10 +174,6 @@ func main() {
 		User:    user,
 		Auth:    auth,
 		Timeout: 10 * time.Second,
-	}
-
-	if port == "0" {
-		port = "22"
 	}
 
 	h := net.JoinHostPort(host, port)
