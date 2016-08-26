@@ -20,13 +20,7 @@ func main() {
 	flag.StringVar(&cfgfile, "c", "config.json", "config file")
 	flag.Parse()
 
-	fp, err := os.Open(cfgfile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	buf, err := ioutil.ReadAll(fp)
-	fp.Close()
+	buf, err := ioutil.ReadFile(cfgfile)
 	if err != nil {
 		log.Fatal(err)
 	}
