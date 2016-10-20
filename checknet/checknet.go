@@ -10,30 +10,46 @@ import (
 	"flag"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
 var timeWait = 10
 
+var countTotal = map[string]int{}
+var countLock = &sync.Mutex{}
+
 func check(u string, max int, errch chan int) {
 	log.Printf("checking %s...", u)
-	var count int
+	//var count int
 	for {
 		time.Sleep(time.Duration(timeWait) * time.Second)
 		if dialing {
-			count = 0
 			continue
 		}
-		if checknet(u) {
-			count = 0
-		} else {
-			count++
+
+		ret := checknet(u)
+
+		// check again
+		if dialing {
+			continue
 		}
 
-		if count >= max {
-			errch <- 1
-			count = 0
+		countLock.Lock()
+		if ret {
+			countTotal[u] = 0
+			//count = 0
+		} else {
+			//count++
+			countTotal[u] = countTotal[u] + 1
 		}
+
+		if countTotal[u] >= max {
+			errch <- 1
+			//count = 0
+		}
+
+		countLock.Unlock()
 	}
 }
 
@@ -48,6 +64,7 @@ func checknet(u string) bool {
 		log.Printf("%s", string(out))
 	}
 	if err != nil {
+		log.Printf("url %s check error", u)
 		return false
 	}
 
@@ -89,8 +106,8 @@ var idleWait, busyWait, dialWait int
 func main() {
 	flag.IntVar(&maxErr, "max_error", 3, "max error on check to trigger re-dial")
 	flag.IntVar(&idleWait, "idle_wait", 60, "seconds to wait when network not busy")
-	flag.IntVar(&busyWait, "busy_wait", 10, "seconds to wait when network busy")
-	flag.IntVar(&dialWait, "dial_wait", 5, "seconds to wait during re-dial")
+	flag.IntVar(&busyWait, "busy_wait", 30, "seconds to wait when network busy")
+	flag.IntVar(&dialWait, "dial_wait", 20, "seconds to wait during re-dial")
 	flag.Parse()
 
 	domains := []string{
@@ -107,9 +124,12 @@ func main() {
 
 	errch := make(chan int, len(domains))
 
+	countLock.Lock()
 	for _, dn := range domains {
+		countTotal[dn] = 0
 		go check(dn, maxErr, errch)
 	}
+	countLock.Unlock()
 
 	dialDone := make(chan int)
 
@@ -128,6 +148,11 @@ func main() {
 				go redial(dialDone)
 			}
 		case <-dialDone:
+			countLock.Lock()
+			for k := range countTotal {
+				countTotal[k] = 0
+			}
+			countLock.Unlock()
 			dialing = false
 		case <-time.After(30 * time.Minute):
 		}
