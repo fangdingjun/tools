@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	//"fmt"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,7 +12,13 @@ import (
 	"time"
 )
 
+type msgSend struct {
+	bot *tgbotapi.BotAPI
+	msg tgbotapi.MessageConfig
+}
+
 var cfg config
+var sendMsgCh = make(chan *msgSend, 20)
 
 func main() {
 	var cfgfile string
@@ -70,6 +76,8 @@ func main() {
 	u.Limit = cfg.PollLimit
 
 	updates, _ := bot.GetUpdatesChan(u)
+
+	go sendMsg()
 
 	for update := range updates {
 		if update.UpdateID >= u.Offset {

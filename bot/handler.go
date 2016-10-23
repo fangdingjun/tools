@@ -33,7 +33,8 @@ func handleCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update, cmd, args strin
 	}
 	s := fmt.Sprintf("Hello, %s", update.Message.From.FirstName)
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, s)
-	bot.Send(msg)
+
+	sendMsgCh <- &msgSend{bot, msg}
 }
 
 func handleMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
@@ -43,7 +44,8 @@ func handleMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	switch {
 	case msg.Text != "":
 		m := tgbotapi.NewMessage(msg.Chat.ID, msg.Text)
-		bot.Send(m)
+		//bot.Send(m)
+		sendMsgCh <- &msgSend{bot, m}
 	case msg.Document != nil:
 		fileID = msg.Document.FileID
 		fileName = msg.Document.FileName
@@ -64,7 +66,8 @@ func handleMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	default:
 		s := "Welcome"
 		m := tgbotapi.NewMessage(msg.Chat.ID, s)
-		bot.Send(m)
+		//bot.Send(m)
+		sendMsgCh <- &msgSend{bot, m}
 	}
 
 	if fileID != "" {
@@ -92,7 +95,8 @@ func handleMsg(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 
 		s := fmt.Sprintf("saved as %s", name)
 		m := tgbotapi.NewMessage(msg.Chat.ID, s)
-		bot.Send(m)
+		//bot.Send(m)
+		sendMsgCh <- &msgSend{bot, m}
 	}
 
 }
@@ -135,6 +139,18 @@ func download(url, save string) {
 				log.Println(err)
 			}
 			break
+		}
+	}
+}
+
+func sendMsg() {
+	for msg := range sendMsgCh {
+		for i := 0; i < 10; i++ {
+			_, err := msg.bot.Send(msg.msg)
+			if err == nil {
+				break
+			}
+			time.Sleep(3 * time.Second)
 		}
 	}
 }
